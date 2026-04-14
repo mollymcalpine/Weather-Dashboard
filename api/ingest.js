@@ -42,7 +42,7 @@ export default async function handler(req, res) {
         precipitation_mm:   c.precipitation,
         rain_mm:            c.rain,
         snowfall_cm:        c.snowfall,
-        weather_code:       WMO_CODES[c.weather_code] || 'Unknown',
+        weather_code:       c.weather_code,
         is_day:             c.is_day === 1,
     };
 
