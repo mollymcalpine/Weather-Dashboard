@@ -231,6 +231,81 @@
         }
     };
 
+    let allData = [];
+    let charts = {};
+    let activeRange = '24h';
+
+    function filterData(range) {
+        if (range === '24h') {
+            return allData.slice(-24);
+        }
+        return allData;
+    }
+
+    function buildCharts(data) {
+        const labels = data.map(r => fmtHour(r.recorded_at));
+        const temps = data.map(r => parseFloat(r.temperature_c));
+        const feels = data.map(r => parseFloat(r.apparent_temp_c));
+        const humidity = data.map(r => parseInt(r.humidity_pct));
+        const wind = data.map(r => parseFloat(r.wind_speed_kmh));
+        const precip = data.map(r => parseFloat(r.precipitation_mm));
+
+        if (charts.temp) {
+            charts.temp.destroy();
+            charts.humidity.destroy();
+            charts.wind.destroy();
+            charts.precip.destroy();
+        }
+
+        charts.temp = new Chart(document.getElementById('tempChart'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    { label: 'Temp', data: temps, borderColor: '#1d9e75', backgroundColor: 'rgba(29,158,117,0.08)', tension: 0.4, pointRadius: 2, fill: true },
+                    { label: 'Feels like', data: feels, borderColor: '#5dcaa5', borderDash: [4, 4], tension: 0.4, pointRadius: 0, fill: false },
+                ]
+            },
+            options: chartDefaults // { ...chartDefaults, plugins: { legend: { display: false } } }
+        });
+
+        charts.humidity = new Chart(document.getElementById('humChart'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{ label: 'Humidity', data: humidity, borderColor: '#378add', backgroundColor: 'rgba(55,138,221,0.08)', tension: 0.4, pointRadius: 2, fill: true }]
+            },
+            options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, min: 0, max: 100 } } }
+        });
+
+        charts.wind = new Chart(document.getElementById('windChart'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{ label: 'Wind', data: wind, borderColor: '#888780', backgroundColor: 'rgba(136,135,128,0.08)', tension: 0.4, pointRadius: 2, fill: true }]
+            },
+            options: chartDefaults
+        });
+
+        charts.precip = new Chart(document.getElementById('precipChart'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{ label: 'Precipitation', data: precip, backgroundColor: 'rgba(55,138,221,0.5)', borderColor: '#378add', borderWidth: 1 }]
+            },
+            options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, min: 0 } } }
+        });
+    }
+
+    function setToggle(range) {
+        activeRange = range;
+        document.getElementById('btn-24h').style.background = range === '24h' ? 'var(--accent)' : 'transparent';
+        document.getElementById('btn-24h').style.color = range === '24h' ? '#fff' : 'var(--muted)';
+        document.getElementById('btn-7d').style.background = range === '7d' ? 'var(--accent)' : 'transparent';
+        document.getElementById('btn-7d').style.color = range === '7d' ? '#fff' : 'var(--muted)';
+        buildCharts(filterData(range));
+    }
+
     async function init() {
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -238,20 +313,15 @@
             .from('weather_snapshots')
             .select('*')
             .order('recorded_at', { ascending: true })
-            .limit(48);
+            .limit(168);
         
         if (error || !data || data.length === 0) {
             document.getElementById('app').innerHTMl = `<div class="error">Could not load data: ${error?.message ?? 'No rows found'}</div>`;
             return;
         }
 
+        allData = data;
         const latest = data[data.length - 1];
-        const labels = data.map(r => fmtHour(r.recorded_at));
-        const temps = data.map(r => parseFloat(r.temperature_c));
-        const feels = data.map(r => parseFloat(r.apparent_temp_c));
-        const humidity = data.map(r => parseInt(r.humidity_pct));
-        const wind = data.map(r => parseFloat(r.wind_speed_kmh));
-        const precip = data.map(r => parseFloat(r.precipitation_mm));
 
         document.getElementById('app').innerHTML = `
             <header>
@@ -295,6 +365,14 @@
                 </div>
             </div>
 
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+                <span style="font-size:0.72rem; color:var(--muted); font-family:'DM Mono', monospace; text-transform:uppercase; letter-spacing:0.06em;">time range</span>
+                <div style="display:flex; border:0.5px solid var(--border); border-radius:8px; overflow:hidden;">
+                    <button id="btn-24h" onclick="settoggle('24h')" style="padding:5px 14px; font-size:0.75rem; font-family:'DM Mono',monospace; border:none; cursor:pointer; transition:all 0.15s; background:var(--accent); color:#fff;">24h</button>
+                    <button id="btn-7d" onclick="setToggle('7d')" style="padding:5px 14px; font-size:0.75rem; font-family:'DM Mono',monospace; border:none; cursor:pointer; transition:all 0.15s; background:transparent; color:var(--muted);">7d</button>
+                </div>
+            </div>
+
             <div class="charts">
                 <div class="chart-card">
                     <div class="chart-title">temperature (°C)</div>
@@ -315,44 +393,7 @@
             </div>
         `;
 
-        new Chart(document.getElementById('tempChart'), {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [
-                    { label: 'Temp', data: temps, borderColor: '#1d9e75', backgroundColor: 'rgba(29,158,117,0.08)', tension: 0.4, pointRadius: 2, fill: true },
-                    { label: 'Feels like', data: feels, borderColor: '#5dcaa5', borderDash: [4, 4], tension: 0.4, pointRadius: 0, fill: false },
-                ]
-            },
-            options: { ...chartDefaults, plugins: { legend: { display: false } } }
-        });
-
-        new Chart(document.getElementById('humChart'), {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [{ label: 'Humidity', data: humidity, borderColor: '#378add', backgroundColor: 'rgba(55,138,221,0.08)', tension: 0.4, pointRadius: 2, fill: true }]
-            },
-            options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, min: 0, max: 100 } } }
-        });
-
-        new Chart(document.getElementById('windChart'), {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [{ label: 'Wind', data: wind, borderColor: '#888780', backgroundColor: 'rgba(136,135,128,0.08)', tension: 0.4, pointRadius: 2, fill: true }]
-            },
-            options: chartDefaults
-        });
-
-        new Chart(document.getElementById('precipChart'), {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [{ label: 'Precipitation', data: precip, backgroundColor: 'rgba(55,138,221,0.5)', borderColor: '#378add', borderWidth: 1 }]
-            },
-            options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, min: 0 } } }
-        });
+        buildCharts(filterData('24h'));
     }
 
     init();
