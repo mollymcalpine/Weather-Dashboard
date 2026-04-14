@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>North Vancouver Weather</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #f5f4f0;
+            --surface: #ffffff;
+            --border: rgba(0,0,0,0.08);
+            --text: #1a1a18;
+            --muted: #7a7a74;
+            --accent: #1d6a4a;
+            --accent-light: #e1f5ee;
+            --accent-mid: #5dcaa5;
+            --warn: #ef9f27;
+            --cold: #378add;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #161614;
+                --surface: #1e1e1c;
+                --border: rgba(255,255,255,0.08);
+                --text: #f0ede6;
+                --muted: #888780;
+                --accent: #5dcaa5;
+                --accent-light: #04342c;
+                --accent-mid: #1d9e75;
+            }
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem 1.5rem;
+        }
+
+        header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .header-left h1 {
+            font-size: 1.6rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+        }
+
+        .header-left p {
+            font-size: 0.8rem;
+            color: var(--muted);
+            font-family: 'DM Mono', monospace;
+            margin-top: 2px;
+        }
+
+        .last-updated {
+            font-size: 0.75rem;
+            color: var(--muted);
+            font-family: 'DM Mono', monospace;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 10px;
+            margin-bottom: 1.5rem;
+        }
+
+        .metric {
+            background: var(--surface);
+            border: 0.5px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .metric-label {
+            font-size: 0.7rem;
+            color: var(--muted);
+            font-family: 'DM Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 6px;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+        }
+
+        .metric-value.accent { color: var(--accent); }
+        .metric-value.cold { color: var(--cold); }
+        .metric-value.warn { color: var(--warn); }
+
+        .metric-sub {
+            font-size: 0.72rem;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+
+        .charts {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .chart-card {
+            background: var(--surface);
+            border: 0.5px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .chart-title {
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-family: 'DM Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 1rem;
+        }
+
+        .chart_wrap {
+            position: relative;
+            width: 100%;
+            height: 200px;
+        }
+
+        .condition-badge {
+            display: inline-block;
+            background: var(--accent-light);
+            color: var(--accent);
+            font-size: 0.75rem;
+            font-family: 'DM Mono', monospace;
+            padding: 3px 10px;
+            border-radius: 20px;
+            margin-top: 4px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 4rem 1rem;
+            color: var(--muted);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.8rem;
+        }
+
+        .error {
+            background: #fcebeb;
+            color: #a32d2d;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            font-size: 0.8rem;
+            font-family: 'DM Mono', monospace;
+            margin-bottom: 1rem;
+        }
+
+        @media (min-width: 640px) {
+            .charts { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div class="loading">fetching weather data...</div>
+</div>
+
+<script>
+    const SUPABASE_URL = 'https://xvbylpdbnbqpmnwdwhxr.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2YnlscGRibmJxcG1ud2R3aHhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMDAxMDQsImV4cCI6MjA5MTY3NjEwNH0.MbTGQmjhtNoUXoNALugj8Mp9Q16EBBfD-2XB773o3r4';
+
+    const WMO_CODES = {
+        0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+        45: 'Foggy', 48: "Icy fog", 51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle',
+        61: 'Slight rain', 63: 'Rain', 65: 'Heavy rain',
+        71: 'Slight snow', 73: 'Snow', 75: 'Heavy snow',
+        80: 'Rain showers', 81: 'Ran showers', 82: 'Violent showers', 95: 'Thunderstorm',
+    };
+
+    function wmoLabel(code) {
+        return WMO_CODES[code] ?? `Code ${code}`;
+    }
+
+    function fmt(val, unit = '') {
+        if (val === null || val === undefined) return '-';
+        return `${parseFloat(val).toFixed(1)}${unit}`;
+    }
+
+    function fmtInt(val, unit = '') {
+        if (val === null || val === undefined) return '-';
+        return `${Math.round(val)}${unit}`;
+    }
+
+    function fmtTime(ts) {
+        const d = new Date(ts);
+        return d.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+    }
+
+    function fmtHour(ts) {
+        const d = new Date(ts);
+        return d.toLocaleString('en-CA', { hour: '2-digit', minute: '2-digit', hour12: true, month: 'short', day: 'numeric' });
+    }
+
+    const chartDefaults = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: {
+                ticks: { color: '#888780', font: { family: 'DM Mono', size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 6 },
+                grid: { color: 'rgba(128,128,120,0.08)' },
+            },
+            y: {
+                ticks: { color: '#888780', font: { family: 'DM Mono', size: 10 } },
+                grid: { color: 'rgba(128,128,120,0.08)' },
+            }
+        }
+    };
+
+    async function init() {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const { data, error } = await supabase
+            .from('weather_snapshots')
+            .select('*')
+            .order('recorded_at', { ascending: true })
+            .limit(48);
+        
+        if (error || !data || data.length === 0) {
+            document.getElementById('app').innerHTMl = `<div class="error">Could not load data: ${error?.message ?? 'No rows found'}</div>`;
+            return;
+        }
+
+        const latest = data[data.length - 1];
+        const labels = data.map(r => fmtHour(r.recorded_at));
+        const temps = data.map(r => parseFloat(r.temperature_c));
+        const feels = data.map(r => parseFloat(r.apparent_temp_c));
+        const humidity = data.map(r => parseInt(r.humidity_pct));
+        const wind = data.map(r => parseFloat(r.wind_speed_kmh));
+        const precip = data.map(r => parseFloat(r.precipitation_mm));
+
+        document.getElementById('app').innerHTML = `
+            <header>
+                <div class="header-left">
+                    <h1>North Vancouver, BC</h1>
+                    <p>personal weather dashboard</p>
+                </div>
+                <span class="last-updated">updated ${fmtTime(latest.recorded_at)}</span>
+            </header>
+
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-label">Temperature</div>
+                    <div class="metric-value accent">${fmt(latest.temperature_c)}°C</div>
+                    <div class="metric-sub">feels like ${fmt(latest.apparent_temp_c)}°C</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Humidity</div>
+                    <div class="metric-value cold">${fmtInt(latest.humidity_pct)}%</div>
+                    <div class="metric-sub">relative humidity</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Wind</div>
+                    <div class="metric-value">${fmt(latest.wind_speed_kmh)} <span style="font-size:0.9rem">km/h</span></div>
+                    <div class="metric-sub">gusts ${fmt(latest.wind_gusts_kmh)} km/h</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Pressure</div>
+                    <div class="metric-value warn">${fmtInt(latest.pressure_hpa)} <span style="font-size:0.9rem">hPa</span></div>
+                    <div class="metric-sub">sea level</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Condition</div>
+                    <div class="metric-value" style="font-size:1rem; padding-top:4px;">${latest.is_day ? '☀' : '🌙'}</div>
+                    <div class="condition-badge">${wmoLabel(latest.weather_code)}</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Precipitation</div>
+                    <div class="metric-value cold">${fmtInt(latest.precipitation_mm)} <span style="font-size:0.9rem">mm</span></div>
+                    <div class="metric-sub">rain ${fmt(latest.rain_mm)} mm</div>
+                </div>
+            </div>
+
+            <div class="charts">
+                <div class="chart-card">
+                    <div class="chart-title">temperature (°C)</div>
+                    <div class="chart_wrap"><canvas id="tempChart" role="img" aria-label="Temperature and feels-like temperature over time">Temperature over time.</canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">humidity (%)</div>
+                    <div class="chart_wrap"><canvas id="humChart" role="img" aria-label="Humidity over time">Humidity over time.</canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">wind speed (km/h)</div>
+                    <div class="chart_wrap"><canvas id="windChart" role="img" aria-label"Wind speed over time">Wind speed over time.</canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">precipitation (mm)</div>
+                    <div class="chart_wrap"><canvas id="precipChart" role="img" aria-label="Precipitation over time">Precipitation over time.</canvas></div>
+                </div>
+            </div>
+        `;
+
+        new Chart(document.getElementById('tempChart'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    { label: 'Temp', data: temps, borderColor: '#1d9e75', backgroundColor: 'rgba(29,158,117,0.08)', tension: 0.4, pointRadius: 2, fill: true },
+                    { label: 'Feels like', data: feels, borderColor: '#5dcaa5', borderDash: [4, 4], tension: 0.4, pointRadius: 0, fill: false },
+                ]
+            },
+            options: { ...chartDefaults, plugins: { legend: { display: false } } }
+        });
+
+        new Chart(document.getElementById('humChart'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{ label: 'Humidity', data: humidity, borderColor: '#378add', backgroundColor: 'rgba(55,138,221,0.08)', tension: 0.4, pointRadius: 2, fill: true }]
+            },
+            options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, min: 0, max: 100 } } }
+        });
+
+        new Chart(document.getElementById('windChart'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{ label: 'Wind', data: wind, borderColor: '#888780', backgroundColor: 'rgba(136,135,128,0.08)', tension: 0.4, pointRadius: 2, fill: true }]
+            },
+            options: chartDefaults
+        });
+
+        new Chart(document.getElementById('precipChart'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{ label: 'Precipitation', data: precip, backgroundColor: 'rgba(55,138,221,0.5)', borderColor: '#378add', borderWidth: 1 }]
+            },
+            options: chartDefaults
+        });
+    }
+
+    init();
+</script>
+</body>
+</html>
