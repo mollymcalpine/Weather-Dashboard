@@ -368,8 +368,8 @@
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
                 <span style="font-size:0.72rem; color:var(--muted); font-family:'DM Mono', monospace; text-transform:uppercase; letter-spacing:0.06em;">time range</span>
                 <div style="display:flex; border:0.5px solid var(--border); border-radius:8px; overflow:hidden;">
-                    <button id="btn-24h" onclick="settoggle('24h')" style="padding:5px 14px; font-size:0.75rem; font-family:'DM Mono',monospace; border:none; cursor:pointer; transition:all 0.15s; background:var(--accent); color:#fff;">24h</button>
-                    <button id="btn-7d" onclick="setToggle('7d')" style="padding:5px 14px; font-size:0.75rem; font-family:'DM Mono',monospace; border:none; cursor:pointer; transition:all 0.15s; background:transparent; color:var(--muted);">7d</button>
+                    <button id="btn-24h" style="padding:5px 14px; font-size:0.75rem; font-family:'DM Mono',monospace; border:none; cursor:pointer; transition:all 0.15s; background:var(--accent); color:#fff;">24h</button>
+                    <button id="btn-7d" style="padding:5px 14px; font-size:0.75rem; font-family:'DM Mono',monospace; border:none; cursor:pointer; transition:all 0.15s; background:transparent; color:var(--muted);">7d</button>
                 </div>
             </div>
 
@@ -392,11 +392,13 @@
                 </div>
             </div>
         `;
+        
+        document.getElementById('btn-24h').addEventListener('click', () => setToggle('24h'));
+        document.getElementById('btn-7d').addEventListener('click', () => setToggle('7d'));
 
         buildCharts(filterData('24h'));
     }
-
-    window.setToggle = setToggle;
+    
     init();
 </script>
 </body>
