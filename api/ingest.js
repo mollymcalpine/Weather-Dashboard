@@ -23,6 +23,8 @@ export default async function handler(req, res) {
         `&current=temperature_2m,apparent_temperature,relative_humidity_2m,` +
         `precipitation,rain,snowfall,weather_code,cloud_cover,` +
         `pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day` +
+        `&hourly=precipitation` +
+        `&forecast_hours=2` +
         `&timezone=America%2FVancouver`;
 
     const weatherRes = await fetch(url);
@@ -44,6 +46,7 @@ export default async function handler(req, res) {
         snowfall_cm:        c.snowfall,
         weather_code:       c.weather_code,
         is_day:             c.is_day === 1,
+        precip_forecast_mm: data.hourly?.precipitation?.[1] ?? null, // Precipitation forecast for the next hour.
     };
 
     const { error } = await supabase

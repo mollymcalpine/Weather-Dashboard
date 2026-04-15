@@ -38,6 +38,7 @@ async function fetchAndStore() {
         snowfall_cm:        c.snowfall,
         weather_code:       c.weather_code,
         is_day:             c.is_day === 1,
+        precip_forecast_mm: data.hourly?.precipitation?.[1] ?? null, // Precipitation forecast for the next hour.
     };
 
     const { error } = await supabase

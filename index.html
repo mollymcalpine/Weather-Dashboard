@@ -361,7 +361,7 @@
                 <div class="metric">
                     <div class="metric-label">Precipitation</div>
                     <div class="metric-value cold">${fmtInt(latest.precipitation_mm)} <span style="font-size:0.9rem">mm</span></div>
-                    <div class="metric-sub">rain ${fmt(latest.rain_mm)} mm</div>
+                    <div class="metric-sub">next hour ~${fmt(latest.precip_forecast_mm)} mm</div>
                 </div>
             </div>
 
@@ -398,7 +398,7 @@
 
         buildCharts(filterData('24h'));
     }
-    
+
     init();
 </script>
 </body>
