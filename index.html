@@ -195,24 +195,24 @@
         return WMO_CODES[code] ?? `Code ${code}`;
     }
 
-    function fmt(val, unit = '') {
+    function frmt(val, unit = '') {
         if (val === null || val === undefined) return '-';
         return `${parseFloat(val).toFixed(1)}${unit}`;
     }
 
-    function fmtInt(val, unit = '') {
+    function formatInt(val, unit = '') {
         if (val === null || val === undefined) return '-';
         return `${Math.round(val)}${unit}`;
     }
 
-    function fmtTime(ts) {
+    function formatTime(ts) {
         const d = new Date(ts);
-        return d.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+        return d.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Vancouver' });
     }
 
-    function fmtHour(ts) {
+    function formatHour(ts) {
         const d = new Date(ts);
-        return d.toLocaleString('en-CA', { hour: '2-digit', minute: '2-digit', hour12: true, month: 'short', day: 'numeric' });
+        return d.toLocaleString('en-CA', { hour: '2-digit', minute: '2-digit', hour12: true, month: 'short', day: 'numeric', timeZone: 'America/Vancouver' });
     }
 
     const chartDefaults = {
@@ -243,7 +243,7 @@
     }
 
     function buildCharts(data) {
-        const labels = data.map(r => fmtHour(r.recorded_at));
+        const labels = data.map(r => formatHour(r.recorded_at));
         const temps = data.map(r => parseFloat(r.temperature_c));
         const feels = data.map(r => parseFloat(r.apparent_temp_c));
         const humidity = data.map(r => parseInt(r.humidity_pct));
@@ -329,28 +329,28 @@
                     <h1>North Vancouver, BC</h1>
                     <p>personal weather dashboard</p>
                 </div>
-                <span class="last-updated">updated ${fmtTime(latest.recorded_at)}</span>
+                <span class="last-updated">updated ${formatTime(latest.recorded_at)}</span>
             </header>
 
             <div class="metrics">
                 <div class="metric">
                     <div class="metric-label">Temperature</div>
-                    <div class="metric-value accent">${fmt(latest.temperature_c)}°C</div>
-                    <div class="metric-sub">feels like ${fmt(latest.apparent_temp_c)}°C</div>
+                    <div class="metric-value accent">${frmt(latest.temperature_c)}°C</div>
+                    <div class="metric-sub">feels like ${frmt(latest.apparent_temp_c)}°C</div>
                 </div>
                 <div class="metric">
                     <div class="metric-label">Humidity</div>
-                    <div class="metric-value cold">${fmtInt(latest.humidity_pct)}%</div>
+                    <div class="metric-value cold">${formatInt(latest.humidity_pct)}%</div>
                     <div class="metric-sub">relative humidity</div>
                 </div>
                 <div class="metric">
                     <div class="metric-label">Wind</div>
-                    <div class="metric-value">${fmt(latest.wind_speed_kmh)} <span style="font-size:0.9rem">km/h</span></div>
-                    <div class="metric-sub">gusts ${fmt(latest.wind_gusts_kmh)} km/h</div>
+                    <div class="metric-value">${frmt(latest.wind_speed_kmh)} <span style="font-size:0.9rem">km/h</span></div>
+                    <div class="metric-sub">gusts ${frmt(latest.wind_gusts_kmh)} km/h</div>
                 </div>
                 <div class="metric">
                     <div class="metric-label">Pressure</div>
-                    <div class="metric-value warn">${fmtInt(latest.pressure_hpa)} <span style="font-size:0.9rem">hPa</span></div>
+                    <div class="metric-value warn">${formatInt(latest.pressure_hpa)} <span style="font-size:0.9rem">hPa</span></div>
                     <div class="metric-sub">sea level</div>
                 </div>
                 <div class="metric">
@@ -360,8 +360,8 @@
                 </div>
                 <div class="metric">
                     <div class="metric-label">Precipitation</div>
-                    <div class="metric-value cold">${fmtInt(latest.precipitation_mm)} <span style="font-size:0.9rem">mm</span></div>
-                    <div class="metric-sub">next hour ~${fmt(latest.precip_forecast_mm)} mm</div>
+                    <div class="metric-value cold">${formatInt(latest.precipitation_mm)} <span style="font-size:0.9rem">mm</span></div>
+                    <div class="metric-sub">next hour ~${frmt(latest.precip_forecast_mm)} mm</div>
                 </div>
             </div>
 
